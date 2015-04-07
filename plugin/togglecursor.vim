@@ -77,29 +77,54 @@ function! s:GetXtermVersion(version)
 endfunction
 
 if s:supported_terminal == ""
-    " iTerm, xterm, and VTE based terminals support DECSCUSR.
-    if $TERM_PROGRAM == "iTerm.app" || exists("$ITERM_SESSION_ID")
-        let s:supported_terminal = 'xterm'
-    elseif $TERM_PROGRAM == "Apple_Terminal" && str2nr($TERM_PROGRAM_VERSION) >= 388
-        let s:supported_terminal = 'xterm'
-    elseif $TERM == "xterm-kitty"
-        let s:supported_terminal = 'xterm'
-    elseif $TERM == "rxvt-unicode" || $TERM == "rxvt-unicode-256color"
-        let s:supported_terminal = 'xterm'
-    elseif str2nr($VTE_VERSION) >= 3900
-        let s:supported_terminal = 'xterm'
-    elseif s:GetXtermVersion($XTERM_VERSION) >= 252
-        let s:supported_terminal = 'xterm'
-    elseif $TERM_PROGRAM == "Konsole" || exists("$KONSOLE_DBUS_SESSION")
+	if &term =~ "xterm"
+		if $TERM_PROGRAM == "iTerm.app" || exists("$ITERM_SESSION_ID")
+					\ || $XTERM_VERSION != ""
+					" \ || $VTE_VERSION != ""
+			" iTerm, xterm, and future VTE based terminals support DESCCUSR.
+			let s:supported_terminal = 'xterm'
+        elseif $TERM_PROGRAM == "Apple_Terminal" && str2nr($TERM_PROGRAM_VERSION) >= 388
+            let s:supported_terminal = 'xterm'
+        elseif $TERM == "xterm-kitty"
+            let s:supported_terminal = 'xterm'
+        elseif $TERM == "rxvt-unicode" || $TERM == "rxvt-unicode-256color"
+            let s:supported_terminal = 'xterm'
+        elseif str2nr($VTE_VERSION) >= 3900
+            let s:supported_terminal = 'xterm'
+		elseif $TERM_PROGRAM == "Konsole" || exists("$KONSOLE_DBUS_SESSION")
         " This detection is not perfect.  KONSOLE_DBUS_SESSION seems to show
         " up in the environment despite running under tmux in an ssh
         " session if you have also started a tmux session locally on target
         " box under KDE.
 
-        let s:supported_terminal = 'cursorshape'
-    else
-        let s:supported_terminal = 'xterm'
-    endif
+			let s:supported_terminal = 'cursorshape'
+		elseif $TERM_PROGRAM == "iTerm2.app" || exists ("$ITERM_PROFILE")
+			"iTerm2 has the same cursor shape sequences as Konsole
+			let s:supported_terminal = 'cursorshape'
+		elseif $TERM_PROGRAM == "gnome-terminal" || $COLORTERM == "gnome-terminal"
+					\ || $VTE_VERSION != ""
+			"very crude system wide gnome-terminal cursor shape change
+			"if has("autocmd")
+			"  au InsertEnter * silent execute "!gconftool-2 --type string --set /apps/gnome-terminal/profiles/Default/cursor_shape ibeam"
+			"  au InsertLeave * silent execute "!gconftool-2 --type string --set /apps/gnome-terminal/profiles/Default/cursor_shape block"
+			"  au VimLeave * silent execute "!gconftool-2 --type string --set /apps/gnome-terminal/profiles/Default/cursor_shape ibeam"
+			"endif
+			let s:supported_terminal = ''  "TODO: add support for gnome-terminal
+		elseif $TERM_PROGRAM == "xfce-terminal"  "TODO: add detetion of xfce-terminal
+			"very crude system wide xfce-terminal cursor shape change
+			"if has("autocmd")
+			"  au InsertEnter * silent execute "!sed -i.bak -e 's/TERMINAL_CURSOR_SHAPE_BLOCK/TERMINAL_CURSOR_SHAPE_UNDERLINE/' ~/.config/Terminal/terminalrc"                                                                                          
+			"  au InsertLeave * silent execute "!sed -i.bak -e 's/TERMINAL_CURSOR_SHAPE_UNDERLINE/TERMINAL_CURSOR_SHAPE_BLOCK/' ~/.config/Terminal/terminalrc"                                                                                          
+			"  au VimLeave * silent execute "!sed -i.bak -e 's/TERMINAL_CURSOR_SHAPE_UNDERLINE/TERMINAL_CURSOR_SHAPE_BLOCK/' ~/.config/Terminal/terminalrc"  
+			"endif
+			let s:supported_terminal = ''  "TODO: add support for xfce-terminal
+		elseif $TERM_PROGRAM == "PuTTY"
+			"cursor shapes are not supported in PuTTY
+			let s:supported_terminal = ''
+        else
+            let s:supported_terminal = 'xterm'
+		endif
+	endif
 endif
 
 if s:supported_terminal == ''
