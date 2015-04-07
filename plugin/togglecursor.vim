@@ -53,6 +53,7 @@ let s:xterm_blinking_block = "\<Esc>[0 q"
 let s:xterm_blinking_line = "\<Esc>[5 q"
 let s:xterm_blinking_underline = "\<Esc>[3 q"
 
+let s:in_screen = exists("$STY")
 let s:in_tmux = exists("$TMUX")
 
 " Detect whether this version of vim supports changing the replace cursor
@@ -96,6 +97,8 @@ if s:supported_terminal == ""
         " box under KDE.
 
         let s:supported_terminal = 'cursorshape'
+    else
+        let s:supported_terminal = 'xterm'
     endif
 endif
 
@@ -132,6 +135,10 @@ if !exists("g:togglecursor_leave")
     endif
 endif
 
+if !exists("g:togglecursor_disable_screen")
+	let g:togglecursor_disable_screen = 0
+endif
+
 if !exists("g:togglecursor_disable_tmux")
     let g:togglecursor_disable_tmux = 0
 endif
@@ -140,6 +147,12 @@ endif
 " Functions
 " -------------------------------------------------------------
 
+function! s:ScreenEscape(line)
+	" Screen has an escape hatch for talking to the real terminal.  Use it.
+	let escaped_line = a:line
+	return "\<Esc>P" . escaped_line . "\<Esc>\\"
+endfunction
+
 function! s:TmuxEscape(line)
     " Tmux has an escape hatch for talking to the real terminal.  Use it.
     let escaped_line = substitute(a:line, "\<Esc>", "\<Esc>\<Esc>", 'g')
@@ -147,7 +160,7 @@ function! s:TmuxEscape(line)
 endfunction
 
 function! s:SupportedTerminal()
-    if s:supported_terminal == '' || (s:in_tmux && g:togglecursor_disable_tmux)
+	if s:supported_terminal == '' || (s:in_tmux && g:togglecursor_disable_tmux) || (s:in_screen && g:togglecursor_disable_screen)
         return 0
     endif
 
@@ -160,6 +173,10 @@ function! s:GetEscapeCode(shape)
     endif
 
     let l:escape_code = s:{s:supported_terminal}_{a:shape}
+
+	if s:in_screen
+		return s:ScreenEscape(l:escape_code)
+	endif
 
     if s:in_tmux
         return s:TmuxEscape(l:escape_code)
