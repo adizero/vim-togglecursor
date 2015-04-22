@@ -110,7 +110,7 @@ if s:supported_terminal == ""
 			"  au VimLeave * silent execute "!gconftool-2 --type string --set /apps/gnome-terminal/profiles/Default/cursor_shape ibeam"
 			"endif
 			let s:supported_terminal = ''  "TODO: add support for gnome-terminal
-		elseif $TERM_PROGRAM == "xfce-terminal"  "TODO: add detetion of xfce-terminal
+		elseif $TERM_PROGRAM == "xfce-terminal"  "TODO: add detection of xfce-terminal
 			"very crude system wide xfce-terminal cursor shape change
 			"if has("autocmd")
 			"  au InsertEnter * silent execute "!sed -i.bak -e 's/TERMINAL_CURSOR_SHAPE_BLOCK/TERMINAL_CURSOR_SHAPE_UNDERLINE/' ~/.config/Terminal/terminalrc"                                                                                          
@@ -207,6 +207,8 @@ function! s:GetEscapeCode(shape)
         return s:TmuxEscape(l:escape_code)
     endif
 
+    "Todo: prepend/append original t_SI and t_EI escape sequence
+
     return l:escape_code
 endfunction
 
@@ -214,6 +216,8 @@ function! s:ToggleCursorInit()
     if !s:SupportedTerminal()
         return
     endif
+
+    "Todo: store original t_SI and t_EI escape sequence
 
     let &t_EI = s:GetEscapeCode(g:togglecursor_default)
     let &t_SI = s:GetEscapeCode(g:togglecursor_insert)
@@ -230,11 +234,24 @@ function! s:ToggleCursorLeave()
 endfunction
 
 function! s:ToggleCursorByMode()
+    "echomsg "insertmode".v:insertmode
     if v:insertmode == 'r' || v:insertmode == 'v'
         let &t_SI = s:GetEscapeCode(g:togglecursor_replace)
     else
         " Default to the insert mode cursor.
         let &t_SI = s:GetEscapeCode(g:togglecursor_insert)
+    endif
+endfunction
+
+function! s:ToggleCursorModeChange()
+    let code = s:GetEscapeCode(g:togglecursor_insert)
+    if v:insertmode == 'r' || v:insertmode == 'v'
+        let code = s:GetEscapeCode(g:togglecursor_replace)
+    endif
+   
+    if code != ""
+        "silent !echo -ne "'".code."'"
+        silent execute "!echo -ne '".code."'"
     endif
 endfunction
 
@@ -253,5 +270,6 @@ augroup ToggleCursorStartup
     autocmd VimLeave * call <SID>ToggleCursorLeave()
     if !s:sr_supported
         autocmd InsertEnter * call <SID>ToggleCursorByMode()
+        autocmd InsertChange * call <SID>ToggleCursorModeChange()
     endif
 augroup END
