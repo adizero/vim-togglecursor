@@ -6,7 +6,7 @@
 " License:      Same license as Vim.
 " ============================================================================
 
-if exists('g:loaded_togglecursor') || &cp || !has("cursorshape")
+if exists('g:loaded_togglecursor') || &compatible || !has('cursorshape')
   finish
 endif
 
@@ -53,8 +53,8 @@ let s:xterm_blinking_block = "\<Esc>[0 q"
 let s:xterm_blinking_line = "\<Esc>[5 q"
 let s:xterm_blinking_underline = "\<Esc>[3 q"
 
-let s:in_screen = exists("$STY")
-let s:in_tmux = exists("$TMUX")
+let s:in_screen = $STY !=# ''
+let s:in_tmux = $TMUX !=# ''
 
 " Detect whether this version of vim supports changing the replace cursor
 " natively.
@@ -77,12 +77,14 @@ function! s:GetXtermVersion(version)
 endfunction
 
 if s:supported_terminal == ""
-	if &term =~ "xterm"
-		if $TERM_PROGRAM == "iTerm.app" || exists("$ITERM_SESSION_ID")
-					\ || $XTERM_VERSION != ""
-					" \ || $VTE_VERSION != ""
-			" iTerm, xterm, and future VTE based terminals support DESCCUSR.
-			let s:supported_terminal = 'xterm'
+    if &term =~# 'xterm'
+        if $TERM_PROGRAM ==# 'iTerm.app' || $ITERM_SESSION_ID !=# ''
+                    \ || ($XTERM_VERSION !=# '' && $XTERM_VERSION !=# 'XTerm(256)')
+                    " \ || $VTE_VERSION != ""
+            " iTerm, xterm, and future VTE based terminals support DESCCUSR.
+            " crosh/Secure Shell (ChromeOS) do not support cursor shapes and
+            " report Xterm version 256
+            let s:supported_terminal = 'xterm'
         elseif $TERM_PROGRAM == "Apple_Terminal" && str2nr($TERM_PROGRAM_VERSION) >= 388
             let s:supported_terminal = 'xterm'
         elseif $TERM == "xterm-kitty"
@@ -97,34 +99,34 @@ if s:supported_terminal == ""
         " session if you have also started a tmux session locally on target
         " box under KDE.
 
-			let s:supported_terminal = 'cursorshape'
-		elseif $TERM_PROGRAM == "iTerm2.app" || exists ("$ITERM_PROFILE")
-			"iTerm2 has the same cursor shape sequences as Konsole
-			let s:supported_terminal = 'cursorshape'
-		elseif $TERM_PROGRAM == "gnome-terminal" || $COLORTERM == "gnome-terminal"
-					\ || $VTE_VERSION != ""
-			"very crude system wide gnome-terminal cursor shape change
-			"if has("autocmd")
-			"  au InsertEnter * silent execute "!gconftool-2 --type string --set /apps/gnome-terminal/profiles/Default/cursor_shape ibeam"
-			"  au InsertLeave * silent execute "!gconftool-2 --type string --set /apps/gnome-terminal/profiles/Default/cursor_shape block"
-			"  au VimLeave * silent execute "!gconftool-2 --type string --set /apps/gnome-terminal/profiles/Default/cursor_shape ibeam"
-			"endif
-			let s:supported_terminal = ''  "TODO: add support for gnome-terminal
-		elseif $TERM_PROGRAM == "xfce-terminal"  "TODO: add detection of xfce-terminal
-			"very crude system wide xfce-terminal cursor shape change
-			"if has("autocmd")
-			"  au InsertEnter * silent execute "!sed -i.bak -e 's/TERMINAL_CURSOR_SHAPE_BLOCK/TERMINAL_CURSOR_SHAPE_UNDERLINE/' ~/.config/Terminal/terminalrc"                                                                                          
-			"  au InsertLeave * silent execute "!sed -i.bak -e 's/TERMINAL_CURSOR_SHAPE_UNDERLINE/TERMINAL_CURSOR_SHAPE_BLOCK/' ~/.config/Terminal/terminalrc"                                                                                          
-			"  au VimLeave * silent execute "!sed -i.bak -e 's/TERMINAL_CURSOR_SHAPE_UNDERLINE/TERMINAL_CURSOR_SHAPE_BLOCK/' ~/.config/Terminal/terminalrc"  
-			"endif
-			let s:supported_terminal = ''  "TODO: add support for xfce-terminal
-		elseif $TERM_PROGRAM == "PuTTY"
-			"cursor shapes are not supported in PuTTY
-			let s:supported_terminal = ''
+            let s:supported_terminal = 'cursorshape'
+        elseif $TERM_PROGRAM ==# 'iTerm2.app' || $ITERM_PROFILE !=# ''
+            "iTerm2 has the same cursor shape sequences as Konsole
+            let s:supported_terminal = 'cursorshape'
+        elseif $TERM_PROGRAM ==# 'gnome-terminal' || $COLORTERM ==# 'gnome-terminal'
+                    \ || $VTE_VERSION !=# ''
+            "very crude system wide gnome-terminal cursor shape change
+            "if has("autocmd")
+            "  au InsertEnter * silent execute "!gconftool-2 --type string --set /apps/gnome-terminal/profiles/Default/cursor_shape ibeam"
+            "  au InsertLeave * silent execute "!gconftool-2 --type string --set /apps/gnome-terminal/profiles/Default/cursor_shape block"
+            "  au VimLeave * silent execute "!gconftool-2 --type string --set /apps/gnome-terminal/profiles/Default/cursor_shape ibeam"
+            "endif
+            let s:supported_terminal = ''  "TODO: add support for gnome-terminal
+        elseif $TERM_PROGRAM ==# 'xfce-terminal'  "TODO: add detection of xfce-terminal
+            "very crude system wide xfce-terminal cursor shape change
+            "if has("autocmd")
+            "  au InsertEnter * silent execute "!sed -i.bak -e 's/TERMINAL_CURSOR_SHAPE_BLOCK/TERMINAL_CURSOR_SHAPE_UNDERLINE/' ~/.config/Terminal/terminalrc"
+            "  au InsertLeave * silent execute "!sed -i.bak -e 's/TERMINAL_CURSOR_SHAPE_UNDERLINE/TERMINAL_CURSOR_SHAPE_BLOCK/' ~/.config/Terminal/terminalrc"
+            "  au VimLeave * silent execute "!sed -i.bak -e 's/TERMINAL_CURSOR_SHAPE_UNDERLINE/TERMINAL_CURSOR_SHAPE_BLOCK/' ~/.config/Terminal/terminalrc"
+            "endif
+            let s:supported_terminal = ''  "TODO: add support for xfce-terminal
+        elseif $TERM_PROGRAM ==# 'PuTTY'
+            "cursor shapes are not supported in PuTTY
+            let s:supported_terminal = ''
         else
             let s:supported_terminal = 'xterm'
-		endif
-	endif
+        endif
+    endif
 endif
 
 if s:supported_terminal == ''
@@ -137,22 +139,24 @@ endif
 " Options
 " -------------------------------------------------------------
 
-if !exists("g:togglecursor_default")
+if !exists('g:togglecursor_default')
     let g:togglecursor_default = 'blinking_block'
 endif
 
-if !exists("g:togglecursor_insert")
+if !exists('g:togglecursor_insert')
     let g:togglecursor_insert = 'blinking_line'
+    " older Xterm versions (older than 282) do not support line shaped cursor (I-beam), only underline
+    " cursor shape
     if $XTERM_VERSION != "" && s:GetXtermVersion($XTERM_VERSION) < 282
         let g:togglecursor_insert = 'blinking_underline'
     endif
 endif
 
-if !exists("g:togglecursor_replace")
+if !exists('g:togglecursor_replace')
     let g:togglecursor_replace = 'blinking_underline'
 endif
 
-if !exists("g:togglecursor_leave")
+if !exists('g:togglecursor_leave')
     if str2nr($VTE_VERSION) >= 3900
         let g:togglecursor_leave = 'blinking_block'
     else
@@ -160,11 +164,11 @@ if !exists("g:togglecursor_leave")
     endif
 endif
 
-if !exists("g:togglecursor_disable_screen")
-	let g:togglecursor_disable_screen = 0
+if !exists('g:togglecursor_disable_screen')
+    let g:togglecursor_disable_screen = 0
 endif
 
-if !exists("g:togglecursor_disable_tmux")
+if !exists('g:togglecursor_disable_tmux')
     let g:togglecursor_disable_tmux = 0
 endif
 
@@ -173,19 +177,19 @@ endif
 " -------------------------------------------------------------
 
 function! s:ScreenEscape(line)
-	" Screen has an escape hatch for talking to the real terminal.  Use it.
-	let escaped_line = a:line
-	return "\<Esc>P" . escaped_line . "\<Esc>\\"
+    " Screen has an escape hatch for talking to the real terminal.  Use it.
+    let l:escaped = a:line
+    return "\<Esc>P" . l:escaped . "\<Esc>\\"
 endfunction
 
 function! s:TmuxEscape(line)
     " Tmux has an escape hatch for talking to the real terminal.  Use it.
-    let escaped_line = substitute(a:line, "\<Esc>", "\<Esc>\<Esc>", 'g')
-    return "\<Esc>Ptmux;" . escaped_line . "\<Esc>\\"
+    let l:escaped = substitute(a:line, "\<Esc>", "\<Esc>\<Esc>", 'g')
+    return "\<Esc>Ptmux;" . l:escaped . "\<Esc>\\"
 endfunction
 
 function! s:SupportedTerminal()
-	if s:supported_terminal == '' || (s:in_tmux && g:togglecursor_disable_tmux) || (s:in_screen && g:togglecursor_disable_screen)
+    if s:supported_terminal ==# '' || (s:in_tmux && g:togglecursor_disable_tmux) || (s:in_screen && g:togglecursor_disable_screen)
         return 0
     endif
 
@@ -199,9 +203,9 @@ function! s:GetEscapeCode(shape)
 
     let l:escape_code = s:{s:supported_terminal}_{a:shape}
 
-	if s:in_screen
-		return s:ScreenEscape(l:escape_code)
-	endif
+    if s:in_screen
+        return s:ScreenEscape(l:escape_code)
+    endif
 
     if s:in_tmux
         return s:TmuxEscape(l:escape_code)
@@ -234,8 +238,8 @@ function! s:ToggleCursorLeave()
 endfunction
 
 function! s:ToggleCursorByMode()
-    "echomsg "insertmode".v:insertmode
-    if v:insertmode == 'r' || v:insertmode == 'v'
+    "echomsg "insertmode ".v:insertmode
+    if v:insertmode ==# 'r' || v:insertmode ==# 'v'
         let &t_SI = s:GetEscapeCode(g:togglecursor_replace)
     else
         " Default to the insert mode cursor.
@@ -244,15 +248,24 @@ function! s:ToggleCursorByMode()
 endfunction
 
 function! s:ToggleCursorModeChange()
-    let code = s:GetEscapeCode(g:togglecursor_insert)
-    if v:insertmode == 'r' || v:insertmode == 'v'
-        let code = s:GetEscapeCode(g:togglecursor_replace)
+    "echomsg "changemode ".v:insertmode
+    let l:code = s:GetEscapeCode(g:togglecursor_insert)
+    if v:insertmode ==# 'r' || v:insertmode ==# 'v'
+        let l:code = s:GetEscapeCode(g:togglecursor_replace)
     endif
-   
-    if code != ""
-        "silent !echo -ne "'".code."'"
-        silent execute "!echo -ne '".code."'"
+
+    if l:code !=# ''
+        "echomsg "l:code=".l:code
+        silent execute "!echo -ne '".l:code."'"
+        call s:ToggleCursorByMode()
     endif
+endfunction
+
+function! ToggleCursorRefresh()
+    call s:ToggleCursorInit()
+    execute "normal! i\<Esc>l"
+    call s:ToggleCursorModeChange()
+    execute 'redraw!'
 endfunction
 
 " Setting t_ti allows us to get the cursor correct for normal mode when we first
@@ -263,6 +276,10 @@ endfunction
 if g:togglecursor_disable_default_init == 0
     let &t_ti = s:GetEscapeCode(g:togglecursor_default) . &t_ti
 endif
+
+" visual fix for r key (replace letter) in Vim
+let g:replace_letter_escape_code = s:GetEscapeCode(g:togglecursor_replace)
+nnoremap r :let &t_SI = g:replace_letter_escape_code<CR>:echo ""<CR>r
 
 augroup ToggleCursorStartup
     autocmd!
