@@ -318,6 +318,7 @@ function! s:ToggleCursorModeChange()
     endif
 endfunction
 
+" called from external vimscript (as a part of the forced Ctrl-L refresh)
 function! ToggleCursorRefresh()
     call s:ToggleCursorInit()
     execute "normal! i\<Esc>l"
@@ -331,7 +332,7 @@ endfunction
 " 0.40.2-based terminals seem to have issues with the cursor disappearing in the
 " certain environments.
 if g:togglecursor_disable_default_init == 0
-    let &t_ti = s:GetEscapeCode(g:togglecursor_default, '') . &t_ti
+    let &t_ti = s:GetEscapeCode(g:togglecursor_default, '') . &t_ti . s:GetEscapeCode(g:togglecursor_default, 't_ti')
 endif
 
 if !s:sr_supported
