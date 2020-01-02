@@ -11,22 +11,22 @@ if exists('g:loaded_togglecursor') || &compatible || !has('cursorshape')
 endif
 
 " Bail out early if not running under a terminal.
-if has("gui_running")
+if has('gui_running')
     finish
 endif
 
-if !exists("g:togglecursor_disable_neovim")
+if !exists('g:togglecursor_disable_neovim')
     let g:togglecursor_disable_neovim = 0
 endif
 
-if !exists("g:togglecursor_disable_default_init")
+if !exists('g:togglecursor_disable_default_init')
     let g:togglecursor_disable_default_init = 0
 endif
 
-if has("nvim")
+if has('nvim')
     " If Neovim support is enabled, then let set the
     " NVIM_TUI_ENABLE_CURSOR_SHAPE for the user.
-    if $NVIM_TUI_ENABLE_CURSOR_SHAPE == "" && g:togglecursor_disable_neovim == 0
+    if $NVIM_TUI_ENABLE_CURSOR_SHAPE ==# '' && g:togglecursor_disable_neovim == 0
         let $NVIM_TUI_ENABLE_CURSOR_SHAPE = 1
     endif
     finish
@@ -72,9 +72,9 @@ let s:sr_supported = exists('+t_SR')
 let s:supported_terminal = ''
 
 " Check for supported terminals.
-if exists("g:togglecursor_force") && g:togglecursor_force != ""
-    if count(["xterm", "cursorshape"], g:togglecursor_force) == 0
-        echoerr "Invalid value for g:togglecursor_force: " .
+if exists('g:togglecursor_force') && g:togglecursor_force !=# ''
+    if count(['xterm', 'cursorshape'], g:togglecursor_force) == 0
+        echoerr 'Invalid value for g:togglecursor_force: ' .
                 \ g:togglecursor_force
     else
         let s:supported_terminal = g:togglecursor_force
@@ -85,7 +85,7 @@ function! s:GetXtermVersion(version)
     return str2nr(matchstr(a:version, '\v^XTerm\(\zs\d+\ze\)'))
 endfunction
 
-if s:supported_terminal == ""
+if s:supported_terminal ==# ''
     if &term =~# 'xterm'
         if $TERM_PROGRAM ==# 'iTerm.app' || $ITERM_SESSION_ID !=# ''
                     \ || ($XTERM_VERSION !=# '' && $XTERM_VERSION !=# 'XTerm(256)')
@@ -94,15 +94,15 @@ if s:supported_terminal == ""
             " crosh/Secure Shell (ChromeOS) do not support cursor shapes and
             " report Xterm version 256
             let s:supported_terminal = 'xterm'
-        elseif $TERM_PROGRAM == "Apple_Terminal" && str2nr($TERM_PROGRAM_VERSION) >= 388
+        elseif $TERM_PROGRAM ==# 'Apple_Terminal' && str2nr($TERM_PROGRAM_VERSION) >= 388
             let s:supported_terminal = 'xterm'
-        elseif $TERM == "xterm-kitty"
+        elseif $TERM ==# 'xterm-kitty'
             let s:supported_terminal = 'xterm'
-        elseif $TERM == "rxvt-unicode" || $TERM == "rxvt-unicode-256color"
+        elseif $TERM ==# 'rxvt-unicode' || $TERM ==# 'rxvt-unicode-256color'
             let s:supported_terminal = 'xterm'
         elseif str2nr($VTE_VERSION) >= 3900
             let s:supported_terminal = 'xterm'
-		elseif $TERM_PROGRAM == "Konsole" || exists("$KONSOLE_DBUS_SESSION")
+        elseif $TERM_PROGRAM ==# 'Konsole' || exists('$KONSOLE_DBUS_SESSION')
         " This detection is not perfect.  KONSOLE_DBUS_SESSION seems to show
         " up in the environment despite running under tmux in an ssh
         " session if you have also started a tmux session locally on target
@@ -138,7 +138,7 @@ if s:supported_terminal == ""
     endif
 endif
 
-if s:supported_terminal == ''
+if s:supported_terminal ==# ''
     " The terminal is not supported, so bail.
     finish
 endif
@@ -156,7 +156,7 @@ if !exists('g:togglecursor_insert')
     let g:togglecursor_insert = 'blinking_line'
     " older Xterm versions (older than 282) do not support line shaped cursor (I-beam), only underline
     " cursor shape
-    if $XTERM_VERSION != "" && s:GetXtermVersion($XTERM_VERSION) < 282
+    if $XTERM_VERSION !=# '' && s:GetXtermVersion($XTERM_VERSION) < 282
         let g:togglecursor_insert = 'blinking_underline'
     endif
 endif
