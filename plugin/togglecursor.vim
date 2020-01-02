@@ -49,9 +49,18 @@ let s:xterm_line = "\<Esc>[6 q"
 let s:xterm_block = "\<Esc>[2 q"
 
 " Not used yet, but don't want to forget them.
-let s:xterm_blinking_block = "\<Esc>[0 q"
-let s:xterm_blinking_line = "\<Esc>[5 q"
 let s:xterm_blinking_underline = "\<Esc>[3 q"
+let s:xterm_blinking_line = "\<Esc>[5 q"
+let s:xterm_blinking_block = "\<Esc>[0 q"
+
+" WTF is it reversed ????
+" let s:xterm_underline = "\<Esc>[3 q"
+" let s:xterm_line = "\<Esc>[5 q"
+" let s:xterm_block = "\<Esc>[1 q"
+
+" let s:xterm_blinking_underline = "\<Esc>[4 q"
+" let s:xterm_blinking_line = "\<Esc>[6 q"
+" let s:xterm_blinking_block = "\<Esc>[2 q"
 
 let s:in_screen = $STY !=# ''
 let s:in_tmux = $TMUX !=# ''
@@ -196,22 +205,70 @@ function! s:SupportedTerminal()
     return 1
 endfunction
 
-function! s:GetEscapeCode(shape)
+" Vimscript code for auto detect paste mode taken and intergrated from https://github.com/ConradIrwin/vim-bracketed-paste
+" let &t_ti .= "\<Esc>[?2004h"
+" let &t_te = "\<Esc>[?2004l" . &t_te
+
+function! XTermPasteBegin(ret)
+  set pastetoggle=<f29>
+  set paste
+  return a:ret
+endfunction
+
+""" function! XTermPasteBegin()
+"""   set pastetoggle=<Esc>[201~
+"""   set paste
+"""   return ''
+""" endfunction
+
+if exists('g:toggle_cursor_auto_detect_paste_mode') && g:toggle_cursor_auto_detect_paste_mode == 1
+    """ if s:SupportedTerminal()
+    """     inoremap <special> <expr> <Esc>[200~ XTermPasteBegin()
+    """ endif
+
+    execute "set <f28>=\<Esc>[200~"
+    execute "set <f29>=\<Esc>[201~"
+    map <expr> <f28> XTermPasteBegin("i")
+    imap <expr> <f28> XTermPasteBegin("")
+    vmap <expr> <f28> XTermPasteBegin("c")
+    cmap <f28> <nop>
+    cmap <f29> <nop>
+endif
+
+function! s:GetEscapeCode(shape, terminal_code)
     if !s:SupportedTerminal()
         return ''
     endif
 
     let l:escape_code = s:{s:supported_terminal}_{a:shape}
 
+    "Todo: prepend/append original t_SI and t_EI escape sequence
+
+    if exists('g:toggle_cursor_auto_detect_paste_mode') && g:toggle_cursor_auto_detect_paste_mode == 1
+        """ if a:terminal_code ==# 't_SI'
+        """     let l:escape_code = l:escape_code . "\<Esc>[?2004h"
+        """ elseif a:terminal_code ==# 't_EI'
+        """     let l:escape_code = l:escape_code . "\<Esc>[?2004l"
+        """ endif
+        if a:terminal_code ==# 't_ti'
+            let l:escape_code = l:escape_code . "\<Esc>[?2004h"
+        elseif a:terminal_code ==# 't_te'
+            let l:escape_code = l:escape_code . "\<Esc>[?2004l"
+        endif
+    endif
+
     if s:in_screen
+        " do not escape in newer compiled screen (TODO autodetect based on screen -v *_sr*)
+        " if newer screen
+        "     return l:escape_code
+        " else
         return s:ScreenEscape(l:escape_code)
+        "" return ''
     endif
 
     if s:in_tmux
         return s:TmuxEscape(l:escape_code)
     endif
-
-    "Todo: prepend/append original t_SI and t_EI escape sequence
 
     return l:escape_code
 endfunction
@@ -223,10 +280,10 @@ function! s:ToggleCursorInit()
 
     "Todo: store original t_SI and t_EI escape sequence
 
-    let &t_EI = s:GetEscapeCode(g:togglecursor_default)
-    let &t_SI = s:GetEscapeCode(g:togglecursor_insert)
+    let &t_EI = s:GetEscapeCode(g:togglecursor_default, 't_EI')
+    let &t_SI = s:GetEscapeCode(g:togglecursor_insert, 't_SI')
     if s:sr_supported
-        let &t_SR = s:GetEscapeCode(g:togglecursor_replace)
+        let &t_SR = s:GetEscapeCode(g:togglecursor_replace, 't_SR')
     endif
 endfunction
 
@@ -234,24 +291,24 @@ function! s:ToggleCursorLeave()
     " One of the last codes emitted to the terminal before exiting is the "out
     " of termcap" sequence.  Tack our escape sequence to change the cursor type
     " onto the beginning of the sequence.
-    let &t_te = s:GetEscapeCode(g:togglecursor_leave) . &t_te
+    let &t_te = s:GetEscapeCode(g:togglecursor_leave, 't_te') . &t_te
 endfunction
 
 function! s:ToggleCursorByMode()
     "echomsg "insertmode ".v:insertmode
     if v:insertmode ==# 'r' || v:insertmode ==# 'v'
-        let &t_SI = s:GetEscapeCode(g:togglecursor_replace)
+        let &t_SI = s:GetEscapeCode(g:togglecursor_replace, 't_SI')
     else
         " Default to the insert mode cursor.
-        let &t_SI = s:GetEscapeCode(g:togglecursor_insert)
+        let &t_SI = s:GetEscapeCode(g:togglecursor_insert, 't_SI')
     endif
 endfunction
 
 function! s:ToggleCursorModeChange()
     "echomsg "changemode ".v:insertmode
-    let l:code = s:GetEscapeCode(g:togglecursor_insert)
+    let l:code = s:GetEscapeCode(g:togglecursor_insert, '')
     if v:insertmode ==# 'r' || v:insertmode ==# 'v'
-        let l:code = s:GetEscapeCode(g:togglecursor_replace)
+        let l:code = s:GetEscapeCode(g:togglecursor_replace, '')
     endif
 
     if l:code !=# ''
@@ -274,7 +331,7 @@ endfunction
 " 0.40.2-based terminals seem to have issues with the cursor disappearing in the
 " certain environments.
 if g:togglecursor_disable_default_init == 0
-    let &t_ti = s:GetEscapeCode(g:togglecursor_default) . &t_ti
+    let &t_ti = s:GetEscapeCode(g:togglecursor_default, '') . &t_ti
 endif
 
 " visual fix for r key (replace letter) in Vim
