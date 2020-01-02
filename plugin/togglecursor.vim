@@ -67,7 +67,7 @@ let s:in_tmux = $TMUX !=# ''
 
 " Detect whether this version of vim supports changing the replace cursor
 " natively.
-let s:sr_supported = exists("+t_SR")
+let s:sr_supported = exists('+t_SR')
 
 let s:supported_terminal = ''
 
@@ -334,9 +334,12 @@ if g:togglecursor_disable_default_init == 0
     let &t_ti = s:GetEscapeCode(g:togglecursor_default, '') . &t_ti
 endif
 
-" visual fix for r key (replace letter) in Vim
-let g:replace_letter_escape_code = s:GetEscapeCode(g:togglecursor_replace)
-nnoremap r :let &t_SI = g:replace_letter_escape_code<CR>:echo ""<CR>r
+if !s:sr_supported
+    " visual fix for r key (replace letter) in Vim
+    let g:replace_letter_escape_code = s:GetEscapeCode(g:togglecursor_replace, 't_SI')
+    ""nnoremap r :let &t_SI = g:replace_letter_escape_code<CR>:echo ""<CR>r
+    nnoremap <silent>r :let &t_SI = g:replace_letter_escape_code<CR>r
+endif
 
 augroup ToggleCursorStartup
     autocmd!
