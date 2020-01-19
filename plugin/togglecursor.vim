@@ -42,25 +42,15 @@ let s:cursorshape_blinking_underline = "\<Esc>]50;CursorShape=2;BlinkingCursorEn
 let s:cursorshape_blinking_line = "\<Esc>]50;CursorShape=1;BlinkingCursorEnabled=1\x7"
 let s:cursorshape_blinking_block = "\<Esc>]50;CursorShape=0;BlinkingCursorEnabled=1\x7"
 
-" Note: newer iTerm's support the DECSCUSR extension (same one used in xterm).
+" Note: Newer iTerm's support the DECSCUSR extension (like XTerm)
 
 let s:xterm_underline = "\<Esc>[4 q"
 let s:xterm_line = "\<Esc>[6 q"
 let s:xterm_block = "\<Esc>[2 q"
 
-" Not used yet, but don't want to forget them.
 let s:xterm_blinking_underline = "\<Esc>[3 q"
 let s:xterm_blinking_line = "\<Esc>[5 q"
-let s:xterm_blinking_block = "\<Esc>[0 q"
-
-" WTF is it reversed ????
-" let s:xterm_underline = "\<Esc>[3 q"
-" let s:xterm_line = "\<Esc>[5 q"
-" let s:xterm_block = "\<Esc>[1 q"
-
-" let s:xterm_blinking_underline = "\<Esc>[4 q"
-" let s:xterm_blinking_line = "\<Esc>[6 q"
-" let s:xterm_blinking_block = "\<Esc>[2 q"
+let s:xterm_blinking_block = "\<Esc>[1 q"
 
 let s:in_screen = $STY !=# ''
 let s:in_tmux = $TMUX !=# ''
@@ -130,8 +120,8 @@ if s:supported_terminal ==# ''
             "endif
             let s:supported_terminal = ''  "TODO: add support for xfce-terminal
         elseif $TERM_PROGRAM ==# 'PuTTY'
-            "cursor shapes are not supported in PuTTY
-            let s:supported_terminal = ''
+            "cursor shapes are not supported in PuTTY in general (but are supported in my custom builds)
+            let s:supported_terminal = 'xterm'
         else
             let s:supported_terminal = 'xterm'
         endif
@@ -156,8 +146,13 @@ if !exists('g:togglecursor_insert')
     let g:togglecursor_insert = 'blinking_line'
     " older Xterm versions (older than 282) do not support line shaped cursor (I-beam), only underline
     " cursor shape
-    if $XTERM_VERSION !=# '' && s:GetXtermVersion($XTERM_VERSION) < 282
-        let g:togglecursor_insert = 'blinking_underline'
+    let s:xterm_version = s:GetXtermVersion($XTERM_VERSION)
+    if s:xterm_version > 0 && s:xterm_version < 282
+        if s:xterm_version != 95 && s:xterm_version != 256
+            "Xterm version 95 is reported by iTerm2 (and it supports blinking line)
+            "Xterm version 256 is reported by Chrome OS crosh/Secure Shell (never tested the support, but I guess it behaves like more recent Xterm)
+            let g:togglecursor_insert = 'blinking_underline'
+        endif
     endif
 endif
 
